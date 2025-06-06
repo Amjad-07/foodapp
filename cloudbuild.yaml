@@ -1,34 +1,71 @@
-# cloudbuild.yaml
 steps:
-  # Build the Docker image
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food:${BUILD_ID}', '.']
-
-  # Push the Docker image to Artifact Registry (AR)
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food:${BUILD_ID}']
-
-  # Deploy the service to Cloud Run
-  - name: 'gcr.io/cloud-builders/gcloud'
+  # Step 1: Clone GitHub repo and zip it
+  - name: 'ubuntu'
+    entrypoint: 'bash'
     args:
-      - 'run'
-      - 'deploy'
-      - 'food-delivery-frontend'  # Replace with your desired service name
-      - '--image'
-      - 'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food:${BUILD_ID}'
-      - '--platform'
-      - 'managed'
-      - '--region'
-      - 'asia-south1'
-      - '--allow-unauthenticated' #Important for testing. Remove for production
-      - '--port'
-      - '8080'
+      - '-c'
+      - |
+        apt-get update && apt-get install -y git zip && \
+        git clone https://github.com/Amjad-07/foodgcp && \
+        zip -r foodgcp.zip foodgcp # Changed repo clone URL and zip name
 
-images:
-  - 'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food:${BUILD_ID}'
+  # Step 2: Ensure Artifact Registry exists
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if ! gcloud artifacts repositories describe food-artifact-cloudrun --location=asia-south1 --project=mindful-phalanx-462010-e0; then
+          echo "Creating Artifact Registry..."
+          gcloud artifacts repositories create food-artifact-cloudrun \
+            --repository-format=docker \
+            --location=asia-south1 \
+            --project=mindful-phalanx-462010-e0
+        else
+          echo "Artifact Registry already exists."
+        fi
 
-options:
-  substitution_option: 'ALLOW_LOOSE' #Allows $BUILD_ID and $PROJECT_ID to be missing, so you can run locally
-  
+  # Step 3: Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    dir: 'foodgcp' # Adjusted directory to the folder created by cloning github
+    args:
+      [
+        'build',
+        '-t',
+        'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/food-artifact-cloudrun/food-image:latest',
+        '.'
+      ]
+
+  # Step 4: Push Docker image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'push',
+        'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/food-artifact-cloudrun/food-image:latest'
+      ]
+
+  # Step 5: Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        SERVICE_NAME="food-cloudrun-service" # Change the name if you want
+        REGION="asia-south1"
+        IMAGE_URI="asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/food-artifact-cloudrun/food-image:latest"
+
+        if gcloud run services describe "$$SERVICE_NAME" --region="$$REGION" --project=mindful-phalanx-462010-e0 > /dev/null 2>&1; then
+          echo "Updating existing Cloud Run service..."
+        else
+          echo "Creating new Cloud Run service..."
+        fi
+
+        gcloud run deploy "$$SERVICE_NAME" \
+          --image="$$IMAGE_URI" \
+          --platform=managed \
+          --region="$$REGION" \
+          --allow-unauthenticated \
+          --project=mindful-phalanx-462010-e0
+
 options:
   logging: CLOUD_LOGGING_ONLY
