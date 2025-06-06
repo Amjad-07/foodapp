@@ -7,7 +7,7 @@ steps:
       - |
         apt-get update && apt-get install -y git zip && \
         git clone https://github.com/Amjad-07/foodgcp && \
-        zip -r foodgcp.zip foodgcp # Changed repo clone URL and zip name
+        zip -r foodgcp.zip foodgcp
 
   # Step 2: Ensure Artifact Registry exists
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -27,7 +27,7 @@ steps:
 
   # Step 3: Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    dir: 'foodgcp' # Adjusted directory to the folder created by cloning github
+    dir: 'foodgcp'
     args:
       [
         'build',
@@ -50,7 +50,7 @@ steps:
     args:
       - '-c'
       - |
-        SERVICE_NAME="food-cloudrun-service" # Change the name if you want
+        SERVICE_NAME="food-cloudrun-service"
         REGION="asia-south1"
         IMAGE_URI="asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/food-artifact-cloudrun/food-image:latest"
 
