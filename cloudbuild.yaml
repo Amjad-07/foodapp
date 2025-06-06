@@ -31,5 +31,8 @@ steps:
         '--allow-unauthenticated'
       ]
 
+images:
+  - asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food:latest
+
 options:
   logging: CLOUD_LOGGING_ONLY
