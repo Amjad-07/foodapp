@@ -1,34 +1,35 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
-      - 'build'
-      - '-t'
-      - 'REGION-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food:latest'
-      - '.'
+      [
+        'build',
+        '-t',
+        'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food',
+        '.'
+      ]
 
   - name: 'gcr.io/cloud-builders/docker'
     args:
-      - 'push'
-      - 'REGION-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food:latest'
+      [
+        'push',
+        'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food'
+      ]
 
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: 'gcloud'
+    entrypoint: gcloud
     args:
-      - 'run'
-      - 'deploy'
-      - 'SERVICE_NAME'
-      - '--image'
-      - 'REGION-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food:latest'
-      - '--region'
-      - 'REGION'
-      - '--platform'
-      - 'managed'
-      - '--allow-unauthenticated'
-      - '--port'
-      - '8080'
-
-images:
-  - 'REGION-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food'
+      [
+        'run',
+        'deploy',
+        'food-frontend',
+        '--image',
+        'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food',
+        '--region',
+        'asia-south1',
+        '--platform',
+        'managed',
+        '--allow-unauthenticated'
+      ]
 
 options:
   logging: CLOUD_LOGGING_ONLY
