@@ -1,71 +1,35 @@
 steps:
-  # Step 1: Clone GitHub repo and zip it
-  - name: 'ubuntu'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        apt-get update && apt-get install -y git zip && \
-        git clone https://github.com/Amjad-07/foodgcp && \
-        zip -r foodgcp.zip foodgcp
-
-  # Step 2: Ensure Artifact Registry exists
-  - name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        if ! gcloud artifacts repositories describe food-artifact-cloudrun --location=asia-south1 --project=mindful-phalanx-462010-e0; then
-          echo "Creating Artifact Registry..."
-          gcloud artifacts repositories create food-artifact-cloudrun \
-            --repository-format=docker \
-            --location=asia-south1 \
-            --project=mindful-phalanx-462010-e0
-        else
-          echo "Artifact Registry already exists."
-        fi
-
-  # Step 3: Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    dir: 'foodgcp'
     args:
       [
         'build',
         '-t',
-        'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/food-artifact-cloudrun/food-image:latest',
+        'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food:latest',
         '.'
       ]
 
-  # Step 4: Push Docker image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       [
         'push',
-        'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/food-artifact-cloudrun/food-image:latest'
+        'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food:latest'
       ]
 
-  # Step 5: Deploy to Cloud Run
-  - name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: 'bash'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
     args:
-      - '-c'
-      - |
-        SERVICE_NAME="food-cloudrun-service"
-        REGION="asia-south1"
-        IMAGE_URI="asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/food-artifact-cloudrun/food-image:latest"
-
-        if gcloud run services describe "$$SERVICE_NAME" --region="$$REGION" --project=mindful-phalanx-462010-e0 > /dev/null 2>&1; then
-          echo "Updating existing Cloud Run service..."
-        else
-          echo "Creating new Cloud Run service..."
-        fi
-
-        gcloud run deploy "$$SERVICE_NAME" \
-          --image="$$IMAGE_URI" \
-          --platform=managed \
-          --region="$$REGION" \
-          --allow-unauthenticated \
-          --project=mindful-phalanx-462010-e0
+      [
+        'run',
+        'deploy',
+        'food-frontend',
+        '--image',
+        'asia-south1-docker.pkg.dev/mindful-phalanx-462010-e0/my-repo1/food:latest',
+        '--region',
+        'asia-south1',
+        '--platform',
+        'managed',
+        '--allow-unauthenticated'
+      ]
 
 options:
   logging: CLOUD_LOGGING_ONLY
